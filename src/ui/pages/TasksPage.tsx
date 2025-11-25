@@ -9,26 +9,28 @@ import { weekRange } from '../../usecases/tasks';
 type ViewMode = 'day' | 'week' | 'month';
 
 export default function TasksPage() {
+  // 服务接口
   const services = useServices();
   // 视图切换与输入状态
   const [view, setView] = useState<ViewMode>('day');
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  // 数据状态
   const [goals, setGoals] = useState<Goal[]>([]);
   const [dayTasks, setDayTasks] = useState<Task[]>([]);
   const [weekTasks, setWeekTasks] = useState<Task[]>([]);
+  // 快捷输入状态
   const [dayInput, setDayInput] = useState('');
   const [weekInputs, setWeekInputs] = useState<Record<string, string>>({});
+  // 任务弹窗状态
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
-  const [modalGoalId, setModalGoalId] = useState<string | ''>('');
+  const [modalGoalId, setModalGoalId] = useState<string | ''>(''); // 任务目标选择
   const [modalColor, setModalColor] = useState('#0ea5e9');
+  // Memo 模式与数据
   const [memoMode, setMemoMode] = useState(false);
-  const [memoItems, setMemoItems] = useState<{ id: string; title: string; goalId?: string | null; color: string }[]>([
-    { id: 'm1', title: '记录灵感', goalId: null, color: '#0ea5e9' },
-    { id: 'm2', title: '备忘：购物清单', goalId: null, color: '#0ea5e9' }
-  ]);
+  const [memoItems, setMemoItems] = useState<{ id: string; title: string; goalId?: string | null; color: string }[]>([]);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [memoTitle, setMemoTitle] = useState('');
   const [memoGoalId, setMemoGoalId] = useState<string | ''>('');
@@ -36,6 +38,7 @@ export default function TasksPage() {
   // 目标映射便于取名/颜色
   const goalMap = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
 
+  // 本地备忘存储 key
   const MEMO_STORAGE_KEY = 'memo_items';
 
   useEffect(() => {
@@ -81,7 +84,7 @@ export default function TasksPage() {
     refresh();
   };
 
-  // seed demo data once for presentation if empty
+  // 首次无任务时注入演示数据
   useEffect(() => {
     (async () => {
       const existing = await services.tasks.listByRange('0000-01-01', '9999-12-31');
@@ -123,7 +126,15 @@ export default function TasksPage() {
     localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memoItems));
   }, [memoItems]);
 
-  const daysOfWeek = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+  // 仅展示昨/今/明三天
+  const daysOfWeek = useMemo(
+    () => [
+      dayjs(selectedDate).add(-1, 'day').format('YYYY-MM-DD'),
+      dayjs(selectedDate).format('YYYY-MM-DD'),
+      dayjs(selectedDate).add(1, 'day').format('YYYY-MM-DD')
+    ],
+    [selectedDate]
+  );
   // 周任务按天分组
   const tasksByDay = useMemo(() => {
     const map: Record<string, Task[]> = {};
@@ -138,6 +149,7 @@ export default function TasksPage() {
   // 周统计
   const weeklyStats = useMemo(() => computeWeeklyStats(weekTasks, { doneOnly: true }), [weekTasks]);
 
+  // 新建/编辑任务提交
   const handleCreateFromModal = async () => {
     if (!modalTitle.trim()) return;
     const goal = modalGoalId ? goalMap.get(modalGoalId) : null;
@@ -167,6 +179,7 @@ export default function TasksPage() {
     refresh();
   };
 
+  // 新建备忘提交
   const handleAddMemo = () => {
     if (!memoTitle.trim()) return;
     const goal = memoGoalId ? goalMap.get(memoGoalId) : null;
@@ -179,11 +192,19 @@ export default function TasksPage() {
     setShowMemoModal(false);
   };
 
+  // 日期快捷切换（上下日）
   const shiftDay = (delta: number) => {
     const next = dayjs(selectedDate).add(delta, 'day').format('YYYY-MM-DD');
     setSelectedDate(next);
   };
-
+  //把阿拉伯数字转化成文字
+  function numberToChineseMonth(n: number) {
+  const cn = ['零','一','二','三','四','五','六','七','八','九'];
+  if (n <= 10) return (n === 10 ? '十' : cn[n]) + '月';
+  if (n < 20) return '十' + cn[n - 10] + '月';
+  return cn[Math.floor(n / 10)] + '十' + cn[n % 10] + '月';
+}
+  // Memo 模式下的独立视图
   if (memoMode) {
     return (
       <div className="grid" style={{ gap: 16 }}>
@@ -272,6 +293,8 @@ export default function TasksPage() {
     );
   }
 
+  // 默认任务视图
+  // 默认任务视图
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="section-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -290,12 +313,7 @@ export default function TasksPage() {
           <button className="btn secondary" onClick={() => setMemoMode(true)}>
             memo
           </button>
-          {view === 'week' && (
-            <div className="chip">
-              本周：{dayjs(daysOfWeek[0]).format('MM/DD')} - {dayjs(daysOfWeek[6]).format('MM/DD')}
-            </div>
-          )}
-          {view === 'month' && <div className="chip">{monthLabel(selectedDate)}</div>}
+
         </div>
       </div>
 
@@ -319,7 +337,6 @@ export default function TasksPage() {
         <div className="section-block" style={{ background: '#fdfdfd' }}>
           <div className="section-title" style={{ marginBottom: 8 }}>
             <span>Today</span>
-            <span className="badge">{dayTasks.length} 项</span>
             <button className="btn" onClick={() => setShowCreateModal(true)} style={{ marginLeft: 'auto' }}>
               +
             </button>
@@ -379,33 +396,39 @@ export default function TasksPage() {
       {view === 'week' && (
         <div className="grid" style={{ gap: 16 }}>
           <div className="section-block">
-            <div className="section-title">
-              <span>本周各目标投入次数（已完成任务计数）</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {weeklyStats.length === 0 && <div className="chip">暂无数据</div>}
-              {weeklyStats.map((stat) => (
-                <div
-                  key={stat.goalId ?? 'free'}
-                  className="chip"
-                  style={{ border: `1px solid ${stat.color}`, color: '#0f172a' }}
-                >
-                  <span className="goal-dot" style={{ background: stat.color }} />
-                  {stat.goalName || goalMap.get(stat.goalId || '')?.name || '自由任务'} · {stat.count}
-                </div>
-              ))}
+            <div
+              className="section-title"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+            >
+              <button className="btn secondary" onClick={() => shiftDay(-1)}>
+                ←
+              </button>
+              <span style={{ margin: '0', fontSize: 18, flex: 1, textAlign: 'center' }}>
+                {numberToChineseMonth(dayjs().month() + 1)}
+              </span>
+              <button className="btn secondary" onClick={() => shiftDay(1)}>
+                →
+              </button>
             </div>
           </div>
-
+          
+          {/* TODO 周视图优化 */}
           <div className="section-block" style={{ padding: 10 }}>
             <div className="week-grid-wrapper">
               <div className="week-grid-header">
                 {daysOfWeek.map((day, idx) => (
                   <div className="week-grid-headcell" key={day}>
-                    <span>
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx]} {dayjs(day).format('MM/DD')}
+                    <span style={{alignSelf: "center"}}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx]} 
                     </span>
-                    <span className="badge">{(tasksByDay[day] || []).length}</span>
+                    <div
+                      style={{ alignSelf: 'center'}}
+                      className={
+                        dayjs(day).isSame(dayjs(), 'day') ? 'today-dot' : undefined
+                      }
+                    >
+                      {dayjs(day).format('DD')}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -470,14 +493,15 @@ export default function TasksPage() {
           </div>
         </div>
       )}
-
+      
+      {/* TODO 月视图 */}
       {view === 'month' && (
         <div className="section-block">
           <div className="section-title">
             <span>月视图</span>
             <span className="badge">MVP 占位</span>
           </div>
-          <p style={{ color: '#475569' }}>月视图 MVP：后续可加入日历格或统计，本版暂显示当前月份标记。</p>
+          <p style={{ color: '#475569' }}>月视图 MVP</p>
         </div>
       )}
 

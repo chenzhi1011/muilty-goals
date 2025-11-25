@@ -53,6 +53,15 @@ npm run preview
 - `src/ui/pages/GoalsPage.tsx`：目标悬浮球列表、详情弹层、类别 CRUD。
 - `src/ui/components/*`：编辑弹窗与任务项（部分已内联简化后未使用，可按需复用）。
 
+## 目录作用概览（不含 dist、node_modules）
+
+- `src/`：前端业务与 UI 代码。
+- `src/domain/`：领域模型定义与纯函数（无存储/网络耦合）。
+- `src/usecases/`：业务用例封装，组合仓储和领域逻辑。
+- `src/adapters/`：适配层；`storage/` 使用 Dexie 持久化到 IndexedDB。
+- `src/ui/`：React UI；`pages/` 页面，`components/` 通用组件，`state/` 依赖注入。
+- `public/`：静态资源（favicon、PWA 图标、robots）。
+- 配置根目录：`vite.config.ts`、`tsconfig*.json` 等构建/类型配置。
 ## MVP 功能概览
 
 - TasksPage：Day/Week/Month 视图（Month 为占位）；新增任务（可选关联目标/类别）；完成勾选；周度投入统计。  

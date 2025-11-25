@@ -26,11 +26,10 @@ export default function App() {
                 letterSpacing: -0.5
               }}
             >
-              G
+              z
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800 }}>GoalFlow</div>
-              <div style={{ color: '#64748b', fontSize: 13 }}>多目标 · 多任务 · 离线可用</div>
             </div>
           </div>
         </header>

@@ -5,12 +5,14 @@
   background-color: #f8fafc;
 }
 
+/* 统一盒模型 */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+/* 页面背景与渐变 */
 body {
   margin: 0;
   min-height: 100vh;
@@ -20,23 +22,27 @@ body {
   overflow-x: hidden;
 }
 
+/* 根容器居中 */
 #root {
   min-height: 100vh;
   display: flex;
   justify-content: center;
 }
 
+/* 主内容容器 */
 .app-shell {
   width: 100%;
   max-width: 600px;
   padding: 20px 16px calc(110px + env(safe-area-inset-bottom, 0px));
 }
 
+/* 基础按钮重置 */
 button {
   cursor: pointer;
   font: inherit;
 }
 
+/* 表单控件统一风格 */
 input,
 select,
 textarea,
@@ -47,6 +53,7 @@ button {
   background: white;
 }
 
+/* 聚焦描边 */
 input:focus,
 select:focus,
 textarea:focus {
@@ -54,6 +61,7 @@ textarea:focus {
   border-color: #22d3ee;
 }
 
+/* 通用卡片 */
 .card {
   background: white;
   border-radius: 16px;
@@ -62,8 +70,10 @@ textarea:focus {
   border: 1px solid #e2e8f0;
 }
 
+/* 标题行 */
 .section-title {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   margin: 0 0 12px;
@@ -71,6 +81,7 @@ textarea:focus {
   font-weight: 700;
 }
 
+/* 小徽标 */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -83,6 +94,7 @@ textarea:focus {
   font-weight: 600;
 }
 
+/* 圆角标签 */
 .pill {
   padding: 6px 10px;
   border-radius: 12px;
@@ -92,16 +104,19 @@ textarea:focus {
   font-size: 12px;
 }
 
+/* 通用 Flex */
 .flex {
   display: flex;
   gap: 12px;
 }
 
+/* 通用 Grid */
 .grid {
   display: grid;
   gap: 12px;
 }
 
+/* 弹窗遮罩 */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -112,6 +127,7 @@ textarea:focus {
   z-index: 30;
 }
 
+/* 弹窗主体 */
 .modal {
   background: white;
   width: min(480px, 90vw);
@@ -121,6 +137,7 @@ textarea:focus {
   border: 1px solid #e2e8f0;
 }
 
+/* 主要按钮 */
 .btn {
   border: none;
   color: white;
@@ -129,11 +146,13 @@ textarea:focus {
   padding: 10px 16px;
 }
 
+/* 次级按钮 */
 .btn.secondary {
   background: #e2e8f0;
   color: #0f172a;
 }
 
+/* Tab 外框 */
 .tab-bar {
   display: inline-flex;
   border-radius: 12px;
@@ -142,6 +161,7 @@ textarea:focus {
   gap: 4px;
 }
 
+/* Tab 按钮 */
 .tab {
   padding: 8px 14px;
   border-radius: 10px;
@@ -151,12 +171,14 @@ textarea:focus {
   color: #475569;
 }
 
+/* Tab 选中态 */
 .tab.active {
   background: white;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   color: #0f172a;
 }
 
+/* 小圆角标签 */
 .chip {
   padding: 6px 10px;
   background: #f1f5f9;
@@ -166,12 +188,14 @@ textarea:focus {
   color: #475569;
 }
 
+/* 小圆点 */
 .goal-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
 }
 
+/* 旧周视图任务标签 */
 .week-task {
   display: inline-flex;
   align-items: center;
@@ -189,8 +213,8 @@ textarea:focus {
   margin: 0;
 }
 
+/* 横向可滚动的周网格容器 */
 .week-grid-wrapper {
-  /* 横向可滚动的周网格容器 */
   overflow-x: auto;
   overflow-y: hidden;
   border-radius: 12px;
@@ -200,12 +224,14 @@ textarea:focus {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 周网格头/体列定义 */
 .week-grid-header,
 .week-grid-body {
   display: grid;
-  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* 周网格表头 */
 .week-grid-header {
   border: 1px solid #e5e5e5;
   border-bottom: none;
@@ -216,16 +242,28 @@ textarea:focus {
   padding: 10px;
   border-right: 1px solid #e5e5e5;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: space-between;
   font-weight: 700;
   font-size: 13px;
 }
 
+.week-grid-headcell .today-dot {
+  background: #ef4444;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 999px;
+  min-width: 32px;
+  text-align: center;
+  font-weight: 800;
+}
+
 .week-grid-headcell:last-child {
   border-right: none;
 }
 
+/* 周网格主体 */
 .week-grid-body {
   border: 1px solid #e5e5e5;
   border-top: none;
@@ -268,6 +306,7 @@ textarea:focus {
   box-sizing: border-box;
 }
 
+/* 记事本单行 */
 .notebook-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -282,25 +321,30 @@ textarea:focus {
   padding-right: 8px;
 }
 
+/* 末行无下边线 */
 .notebook-row:last-child {
   border-bottom: none;
 }
 
+/* 行内勾选框 */
 .notebook-row input[type='checkbox'] {
   width: 18px;
   height: 18px;
 }
 
+/* 任务文本 */
 .notebook-text {
   font-size: 15px;
   color: #0f172a;
 }
 
+/* 完成态文本 */
 .notebook-text.done {
   color: #9ca3af;
   text-decoration: line-through;
 }
 
+/* 删除按钮 */
 .notebook-delete {
   border: none;
   background: transparent;
@@ -309,10 +353,12 @@ textarea:focus {
   cursor: pointer;
 }
 
+/* 删除 hover */
 .notebook-delete:hover {
   color: #ef4444;
 }
 
+/* 新增任务输入 */
 .notebook-input {
   width: 100%;
   border: none;
@@ -323,6 +369,7 @@ textarea:focus {
   box-sizing: border-box;
 }
 
+/* 输入占位色 */
 .notebook-input::placeholder {
   color: #cbd5e1;
 }
@@ -334,14 +381,16 @@ textarea:focus {
   border: 1px solid #e2e8f0;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
   padding: 14px;
-  width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
+/* 周视图单日块间距（保留） */
 .week-section {
   margin-top: 16px;
 }
 
+/* 底部导航 */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -360,6 +409,7 @@ textarea:focus {
   will-change: transform;
 }
 
+/* 底部导航按钮 */
 .bottom-nav button {
   border: none;
   background: transparent;
@@ -371,10 +421,12 @@ textarea:focus {
   gap: 8px;
 }
 
+/* 底部导航激活态 */
 .bottom-nav button.active {
   color: #0f172a;
 }
 
+/* 顶部标题区 */
 .content-header {
   display: flex;
   align-items: center;
@@ -433,10 +485,10 @@ textarea:focus {
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 100%) {
   .week-grid-header,
   .week-grid-body {
-    grid-template-columns: repeat(7, minmax(90px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -444,7 +496,7 @@ textarea:focus {
 @media (max-width: 480px) {
   .week-grid-header,
   .week-grid-body {
-    grid-template-columns: repeat(7, minmax(60px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .notebook-row, .section-block, .notebook-list {
     padding-left: 2px;
