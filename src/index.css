@@ -3,6 +3,8 @@
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #0f172a;
   background-color: #f8fafc;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* 统一盒模型 */
@@ -16,6 +18,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.12), transparent 25%),
     radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.12), transparent 25%),
     #f8fafc;
@@ -25,6 +28,7 @@ body {
 /* 根容器居中 */
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -39,6 +43,8 @@ body {
 
 .tasks-screen {
   width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   padding: 24px 12px;
@@ -48,6 +54,7 @@ body {
   position: relative;
   width: min(393px, calc(100vw - 24px));
   height: min(852px, calc(100vh - 48px));
+  height: min(852px, calc(100dvh - 48px));
   border-radius: 40px;
   overflow: hidden;
   background: linear-gradient(180deg, #c9c6ff 1%, #7674d1 56%);
@@ -57,7 +64,7 @@ body {
 .tasks-hero {
   position: relative;
   min-height: 320px;
-  padding: 56px 18px 0;
+  padding: calc(24px + var(--safe-top)) 18px 0;
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 227, 151, 0.95) 0 3px, transparent 4px),
     radial-gradient(circle at 75% 22%, rgba(255, 180, 82, 0.95) 0 14px, transparent 15px),
@@ -582,7 +589,7 @@ body {
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  max-height: 420px;
+  max-height: min(420px, calc(100dvh - 280px));
   padding-right: 4px;
 }
 
@@ -656,6 +663,7 @@ body {
 .memo-modal {
   width: min(420px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   border-radius: 24px;
   background: #fff;
   border: 1px solid rgba(138, 134, 208, 0.12);
@@ -689,7 +697,7 @@ body {
 .tasks-add-fab {
   position: absolute;
   right: 24px;
-  bottom: 88px;
+  bottom: calc(88px + var(--safe-bottom));
   width: 54px;
   height: 54px;
   border: none;
@@ -709,7 +717,8 @@ body {
   right: 0;
   bottom: 0;
   z-index: 3;
-  height: 80px;
+  height: calc(80px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(6px);
   display: flex;
@@ -732,6 +741,8 @@ body {
 
 .goals-screen {
   width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   padding: 24px 12px;
@@ -741,6 +752,7 @@ body {
   position: relative;
   width: min(393px, calc(100vw - 24px));
   height: min(852px, calc(100vh - 48px));
+  height: min(852px, calc(100dvh - 48px));
   border-radius: 40px;
   overflow: hidden;
   background:
@@ -773,7 +785,7 @@ body {
 .goals-orbit-field {
   position: absolute;
   left: 36px;
-  top: 135px;
+  top: calc(135px + var(--safe-top));
   width: 320px;
   display: grid;
   grid-template-columns: repeat(2, 152px);
@@ -891,7 +903,7 @@ body {
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: 80px;
+  bottom: calc(80px + var(--safe-bottom));
   z-index: 2;
   display: grid;
   grid-template-columns: 163px 1fr;
@@ -900,11 +912,11 @@ body {
 }
 
 .goals-panel--raised {
-  bottom: 118px;
+  bottom: calc(118px + var(--safe-bottom));
 }
 
 .goals-panel--galaxy {
-  bottom: 112px;
+  bottom: calc(112px + var(--safe-bottom));
 }
 
 .goals-stat-card,
@@ -1000,7 +1012,7 @@ body {
 
 .galaxy-header {
   position: absolute;
-  top: 88px;
+  top: calc(88px + var(--safe-top));
   left: 27px;
   right: 31px;
   display: flex;
@@ -1031,7 +1043,7 @@ body {
 
 .galaxy-period {
   position: absolute;
-  top: 162px;
+  top: calc(162px + var(--safe-top));
   left: 31px;
   color: #fff;
   font-size: 15px;
@@ -1040,7 +1052,7 @@ body {
 
 .galaxy-grid {
   position: absolute;
-  top: 188px;
+  top: calc(188px + var(--safe-top));
   left: 31px;
   display: flex;
   flex-wrap: wrap;
@@ -1109,12 +1121,13 @@ body {
   z-index: 45;
   background: rgba(12, 16, 34, 0.08);
   padding-top: 353px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(80px + var(--safe-bottom));
 }
 
 .goal-arrange-sheet {
   width: min(393px, 100vw);
   height: min(419px, calc(100vh - 353px - 80px - env(safe-area-inset-bottom, 0px)));
+  height: min(419px, calc(100dvh - 353px - 80px - var(--safe-bottom)));
   padding: 43px 57px 44px;
   border-radius: 40px 40px 0 0;
   background: #2e3451;
@@ -1180,12 +1193,13 @@ body {
   justify-content: center;
   z-index: 44;
   padding-top: 325px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(80px + var(--safe-bottom));
 }
 
 .goal-sheet {
   width: min(393px, 100vw);
   max-height: min(706px, calc(100vh - 325px - 80px - env(safe-area-inset-bottom, 0px)));
+  max-height: min(706px, calc(100dvh - 325px - 80px - var(--safe-bottom)));
   overflow: auto;
   background: #2e3451;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1376,7 +1390,8 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 80px;
+  height: calc(80px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   background: rgba(255, 255, 255, 0.58);
   backdrop-filter: blur(6px);
   display: flex;
@@ -1421,12 +1436,13 @@ body {
   justify-content: center;
   z-index: 40;
   padding-top: 190px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(80px + var(--safe-bottom));
 }
 
 .task-sheet {
   width: min(392px, 100vw);
   max-height: min(662px, calc(100vh - 270px - env(safe-area-inset-bottom, 0px)));
+  max-height: min(662px, calc(100dvh - 270px - var(--safe-bottom)));
   overflow: auto;
   background: #2e3451;
   border-radius: 40px 40px 0 0;
@@ -1869,7 +1885,13 @@ textarea:focus {
   .tasks-phone {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
+    height: 100svh;
     border-radius: 0;
+  }
+
+  .tasks-hero {
+    padding-top: calc(18px + var(--safe-top));
   }
 
   .tasks-panel {
@@ -1884,10 +1906,135 @@ textarea:focus {
   .task-sheet {
     width: 100vw;
     max-height: calc(100vh - 180px - 80px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 180px - 80px - var(--safe-bottom));
   }
 
   .task-sheet__dates {
     grid-template-columns: 1fr;
+  }
+
+  .goals-screen {
+    padding: 0;
+  }
+
+  .goals-phone {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    height: 100svh;
+    border-radius: 0;
+  }
+
+  .goals-orbit-field {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    top: calc(116px + var(--safe-top));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
+  }
+
+  .goal-planet {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    padding: 14px;
+  }
+
+  .goal-planet__name {
+    font-size: 16px;
+  }
+
+  .goal-planet__meta {
+    font-size: 11px;
+  }
+
+  .goals-galaxy-button {
+    right: 16px;
+    top: auto;
+    bottom: calc(258px + var(--safe-bottom));
+  }
+
+  .goals-panel {
+    left: 16px;
+    right: 16px;
+    grid-template-columns: minmax(122px, 136px) 1fr;
+    gap: 12px;
+  }
+
+  .goals-panel--raised {
+    bottom: calc(96px + var(--safe-bottom));
+  }
+
+  .goals-panel--galaxy {
+    bottom: calc(92px + var(--safe-bottom));
+  }
+
+  .goals-stat-card {
+    min-height: 126px;
+    padding: 16px;
+  }
+
+  .goals-panel-copy {
+    gap: 14px;
+  }
+
+  .goals-panel-copy h1 {
+    font-size: 26px;
+  }
+
+  .goals-create-button {
+    width: 100%;
+    min-height: 84px;
+    font-size: 24px;
+  }
+
+  .galaxy-header {
+    top: calc(48px + var(--safe-top));
+    left: 16px;
+    right: 16px;
+    gap: 14px;
+  }
+
+  .galaxy-header h1 {
+    font-size: 26px;
+  }
+
+  .galaxy-period {
+    top: calc(112px + var(--safe-top));
+    left: 16px;
+  }
+
+  .galaxy-grid {
+    top: calc(142px + var(--safe-top));
+    left: 16px;
+    right: 16px;
+    width: auto;
+    gap: 12px;
+  }
+
+  .galaxy-card {
+    flex: 1 1 calc(33.333% - 8px);
+    min-width: 92px;
+    max-width: calc(33.333% - 8px);
+  }
+
+  .galaxy-card__planet {
+    width: 64px;
+    height: 64px;
+  }
+
+  .galaxy-card__core {
+    inset: 8px;
+  }
+
+  .galaxy-card__ring {
+    top: 24px;
+    height: 14px;
+  }
+
+  .goals-bottom-nav {
+    gap: 72px;
   }
 }
 
