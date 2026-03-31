@@ -1,205 +1,378 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Goal, Category } from '../../domain/types';
 import { useServices } from '../state/AppProvider';
 import { GoalEditorModal } from '../components/GoalEditorModal';
 import { formatDate } from '../../utils/date';
 
-export default function GoalsPage() {
-  // 拿到全局注入的 services（里面封装了 goals / categories 的增删改查）
+type Props = {
+  onNavigateTasks?: () => void;
+};
+
+type GoalsView = 'planets' | 'galaxy';
+type GalaxyGoalStatus = 'planet' | 'pending';
+type GalaxyArchiveMap = Record<string, { status: GalaxyGoalStatus }>;
+
+const FLOAT_OFFSETS = [
+  { x: 0, y: 0 },
+  { x: 12, y: 10 },
+  { x: -10, y: 6 },
+  { x: 8, y: -8 }
+];
+
+const GALAXY_ARCHIVE_KEY = 'goal_galaxy_archive';
+
+export default function GoalsPage({ onNavigateTasks }: Props) {
   const services = useServices();
-
-  // =========================
-  //  基础状态管理（useState）
-  // =========================
-
-  // 所有目标列表
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressGoalIdRef = useRef<string | null>(null);
+  const [view, setView] = useState<GoalsView>('planets');
   const [goals, setGoals] = useState<Goal[]>([]);
-
-  // 每个目标对应的类别列表：key 为 goalId，value 为该目标下的 Category[]
   const [categories, setCategories] = useState<Record<string, Category[]>>({});
-
-  // 控制 “目标编辑弹窗（GoalEditorModal）” 是否显示
   const [showModal, setShowModal] = useState(false);
-
-  // 当前正在编辑的目标（传给 GoalEditorModal）
-  // 如果是 null，表示创建新目标；否则表示编辑这个目标
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-
-  // 每个目标对应的 “新增类别输入框” 当前输入值
-  // key 是 goalId，value 是输入框内容
   const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>({});
-
-  // 当前在详情弹窗中打开的目标的 id
-  // null 表示没有详情弹窗打开
   const [detailGoalId, setDetailGoalId] = useState<string | null>(null);
+  const [completionRate, setCompletionRate] = useState(0);
+  const [arrangingGoalId, setArrangingGoalId] = useState<string | null>(null);
+  const [galaxyArchive, setGalaxyArchive] = useState<GalaxyArchiveMap>({});
 
-  // =========================
-  //  加载 / 刷新目标
-  // =========================
+  const detailGoal = useMemo(
+    () => (detailGoalId ? goals.find((goal) => goal.id === detailGoalId) ?? null : null),
+    [detailGoalId, goals]
+  );
+  const arrangingGoal = useMemo(
+    () => (arrangingGoalId ? goals.find((goal) => goal.id === arrangingGoalId) ?? null : null),
+    [arrangingGoalId, goals]
+  );
+  const archivedGoals = useMemo(
+    () => goals.filter((goal) => galaxyArchive[goal.id]),
+    [galaxyArchive, goals]
+  );
+  const activePlanets = useMemo(
+    () => goals.filter((goal) => !galaxyArchive[goal.id]),
+    [galaxyArchive, goals]
+  );
 
-  // 从 services 里拉取当前所有激活目标，并加载它们对应的 categories
-  const refreshGoals = async () => {
-    const list = await services.goals.listActive(); // 拉目标列表
-    setGoals(list);                                 // 更新到 state
-
-    // 对每一个目标，再去加载它的类别
-    list.forEach((g: Goal) => loadCategories(g.id));
-  };
-
-  // =========================
-  //  类别相关操作
-  // =========================
-
-  // 删除某个目标下的一个类别
-  const handleRemoveCategory = async (goalId: string, categoryId: string) => {
-    await services.categories.delete(categoryId); // 调用服务删除类别
-    loadCategories(goalId);                      // 重新加载该目标的类别列表
-  };
-
-  // 重命名某个类别
-  const handleRenameCategory = async (goalId: string, categoryId: string, current: string) => {
-    // 用浏览器原生 prompt 获取用户的新名称
-    const name = window.prompt('修改类别名称', current);
-    if (!name || !name.trim()) return; // 用户取消或者输入空白则不处理
-
-    await services.categories.update({ id: categoryId, name: name.trim() }); // 保存更新
-    loadCategories(goalId); // 重新加载该目标的类别列表
-  };
-
-  // 根据 goalId 加载它对应的类别列表，并合并到 categories 状态中
-  const loadCategories = async (goalId: string) => {
-    const list = await services.categories.listByGoal(goalId); // 拉取该目标下的类别
-    setCategories((prev) => ({ ...prev, [goalId]: list }));    // 合并更新（保持其他 goalId 的数据不变）
-  };
-
-  // 组件首次挂载时，拉一次目标列表
   useEffect(() => {
-    refreshGoals();
+    void refreshGoals();
+    void refreshCompletion();
   }, []);
 
-  // 新增类别：从 categoryInputs[goalId] 读取输入内容，创建后清空输入框
-  const handleAddCategory = async (goalId: string) => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(GALAXY_ARCHIVE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as GalaxyArchiveMap;
+      if (parsed && typeof parsed === 'object') {
+        setGalaxyArchive(parsed);
+      }
+    } catch {
+      // ignore malformed persisted state
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(GALAXY_ARCHIVE_KEY, JSON.stringify(galaxyArchive));
+  }, [galaxyArchive]);
+
+  async function refreshGoals() {
+    const list = await services.goals.listActive();
+    setGoals(list);
+    list.forEach((goal) => {
+      void loadCategories(goal.id);
+    });
+  }
+
+  async function refreshCompletion() {
+    const list = await services.tasks.listByRange('0000-01-01', '9999-12-31');
+    if (list.length === 0) {
+      setCompletionRate(0);
+      return;
+    }
+    const doneCount = list.filter((task) => task.done).length;
+    setCompletionRate(Math.round((doneCount / list.length) * 100));
+  }
+
+  async function loadCategories(goalId: string) {
+    const list = await services.categories.listByGoal(goalId);
+    setCategories((prev) => ({ ...prev, [goalId]: list }));
+  }
+
+  async function handleAddCategory(goalId: string) {
     const name = categoryInputs[goalId];
-    if (!name || !name.trim()) return; // 空内容不提交
-
-    await services.categories.create({ goalId, name: name.trim() }); // 创建新类别
-    // 清空该目标对应的输入框内容
+    if (!name?.trim()) return;
+    await services.categories.create({ goalId, name: name.trim() });
     setCategoryInputs((prev) => ({ ...prev, [goalId]: '' }));
-    // 重新加载该目标的类别列表
-    loadCategories(goalId);
-  };
+    await loadCategories(goalId);
+  }
 
-  // 删除目标：提示用户确认，删除后刷新目标列表，并关闭详情弹窗
-  const handleDeleteGoal = async (goalId: string) => {
+  async function handleRemoveCategory(goalId: string, categoryId: string) {
+    await services.categories.delete(categoryId);
+    await loadCategories(goalId);
+  }
+
+  async function handleRenameCategory(goalId: string, categoryId: string, current: string) {
+    const name = window.prompt('修改类别名称', current);
+    if (!name?.trim()) return;
+    await services.categories.update({ id: categoryId, name: name.trim() });
+    await loadCategories(goalId);
+  }
+
+  async function handleDeleteGoal(goalId: string) {
     const ok = window.confirm('删除后关联任务将转为未分组任务，确认删除？');
     if (!ok) return;
-
     await services.goals.delete(goalId);
-    setDetailGoalId(null); // 关闭详情弹窗
-    refreshGoals();        // 重新拉取目标列表
-  };
+    setGalaxyArchive((prev) => {
+      const next = { ...prev };
+      delete next[goalId];
+      return next;
+    });
+    setDetailGoalId(null);
+    await refreshGoals();
+  }
 
-  // 根据 detailGoalId 找出当前正在展示详情的目标对象
-  const detailGoal = detailGoalId ? goals.find((g) => g.id === detailGoalId) ?? null : null;
+  function archiveGoal(goalId: string, status: GalaxyGoalStatus) {
+    setGalaxyArchive((prev) => ({ ...prev, [goalId]: { status } }));
+    setArrangingGoalId(null);
+  }
 
-  // =========================
-  //  渲染区域
-  // =========================
+  function openCreateGoal() {
+    setEditingGoal(null);
+    setShowModal(true);
+  }
+
+  function openEditGoal(goal: Goal) {
+    setEditingGoal(goal);
+    setShowModal(true);
+  }
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function startPlanetLongPress(goalId: string) {
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressGoalIdRef.current = goalId;
+      setArrangingGoalId(goalId);
+    }, 420);
+  }
+
+  function finishPlanetPress() {
+    clearLongPressTimer();
+  }
+
+  function handlePlanetClick(goal: Goal) {
+    if (longPressGoalIdRef.current === goal.id) {
+      longPressGoalIdRef.current = null;
+      return;
+    }
+    openEditGoal(goal);
+  }
+
   return (
-    <div className="grid" style={{ gap: 12 }}>
-      {/* 顶部卡片：标题 + 新增目标按钮 */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontWeight: 800 }}>目标设定</div>
-          <div style={{ color: '#64748b' }}>悬浮球展示目标，点击查看详情和编辑</div>
+    <>
+      <div className="goals-screen">
+        <div className="goals-phone">
+          <div className="goals-stars" aria-hidden="true">
+            <span className="goals-star goals-star-a" />
+            <span className="goals-star goals-star-b" />
+            <span className="goals-star goals-star-c" />
+            <span className="goals-star goals-star-d" />
+            <span className="goals-star goals-star-e" />
+            <span className="goals-star goals-star-f" />
+            <span className="goals-star goals-star-g" />
+            <span className="goals-star goals-star-h" />
+          </div>
+
+          {view === 'planets' ? (
+            <>
+              <div className="goals-orbit-field">
+                {activePlanets.length === 0 ? (
+                  <div className="goals-empty-state">
+                    <p>No planets yet</p>
+                    <button type="button" onClick={openCreateGoal}>
+                      Create first goal
+                    </button>
+                  </div>
+                ) : (
+                  activePlanets.map((goal, index) => {
+                    const offset = FLOAT_OFFSETS[index % FLOAT_OFFSETS.length];
+                    return (
+                      <button
+                        key={goal.id}
+                        className="goal-planet"
+                        style={
+                          {
+                            '--float-x': `${offset.x}px`,
+                            '--float-y': `${offset.y}px`,
+                            '--planet-color': goal.color,
+                            animationDelay: `${index * 0.4}s`
+                          } as React.CSSProperties
+                        }
+                        onPointerDown={() => startPlanetLongPress(goal.id)}
+                        onPointerUp={finishPlanetPress}
+                        onPointerLeave={finishPlanetPress}
+                        onPointerCancel={finishPlanetPress}
+                        onClick={() => handlePlanetClick(goal)}
+                        type="button"
+                      >
+                        <span className="goal-planet__name">{goal.name}</span>
+                        <span className="goal-planet__meta">
+                          {goal.type === 'ongoing' ? 'Ongoing' : 'Project'} · {goal.importance}★
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="goals-galaxy-button"
+                onClick={() => setView('galaxy')}
+                aria-label="Open galaxy view"
+              >
+                <span className="goals-galaxy-button__core" />
+                <span className="goals-galaxy-button__ring" />
+                <span className="goals-galaxy-button__dot" />
+              </button>
+
+              <section className="goals-panel goals-panel--raised">
+                <div className="goals-stat-card">
+                  <small>Active Goals</small>
+                  <strong>{activePlanets.length}</strong>
+                </div>
+
+                <div className="goals-panel-copy">
+                  <h1>My goals</h1>
+                  <button type="button" className="goals-create-button" onClick={openCreateGoal}>
+                    Create
+                  </button>
+                </div>
+              </section>
+            </>
+          ) : (
+            <>
+              <div className="galaxy-header">
+                <button
+                  type="button"
+                  className="galaxy-back-button"
+                  onClick={() => setView('planets')}
+                  aria-label="Back to planets"
+                >
+                  ←
+                </button>
+                <h1>My galaxy</h1>
+              </div>
+
+              <div className="galaxy-period">2024-2025</div>
+
+              <div className="galaxy-grid">
+                {archivedGoals.map((goal) => (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    className={`galaxy-card ${galaxyArchive[goal.id]?.status === 'pending' ? 'is-muted' : ''}`}
+                    onClick={() => setDetailGoalId(goal.id)}
+                    style={{ '--planet-color': goal.color } as React.CSSProperties}
+                  >
+                    <span className="galaxy-card__planet">
+                      <span className="galaxy-card__core" />
+                      <span className="galaxy-card__ring" />
+                    </span>
+                    <span className="galaxy-card__label">{goal.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              <section className="goals-panel goals-panel--galaxy">
+                <div className="goals-stat-card">
+                  <small>Archived Goals</small>
+                  <strong>{archivedGoals.length}</strong>
+                </div>
+
+                <div className="goals-completion-card">
+                  <small>Completion</small>
+                  <div className="goals-completion-card__value">
+                    <strong>{completionRate}</strong>
+                    <span>%</span>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+
+          <nav className="goals-bottom-nav" aria-label="Primary">
+            <button type="button" onClick={onNavigateTasks}>
+              Done
+            </button>
+            <button type="button" className="is-active">
+              Planets
+            </button>
+          </nav>
         </div>
-        {/* 新增目标按钮：当 goals 数量 >= 3 时禁用 */}
-        <button className="btn" onClick={() => setShowModal(true)} >
-          {/* disabled={goals.length >= 3} 上行可设置最多数量 */}
-          + 新增目标
-        </button>
       </div>
 
-      {/* 如果一个目标都没有，显示提示卡片 */}
-      {goals.length === 0 && <div className="card">暂无目标，先创建一个吧。</div>}
-
-      {/* 目标“悬浮球”列表区域：自适应网格布局 */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
-        {goals.map((goal) => (
-          // 每个目标是一个 button，点击后打开该目标的详情弹窗
-          <button
-            key={goal.id}
-            onClick={() => setDetailGoalId(goal.id)} // 设置当前详情目标 id
-            style={{
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            {/* 目标圆球（悬浮球） */}
-            <div
-              style={{
-                width: 96,
-                height: 96,
-                borderRadius: '50%',               // 圆形
-                background: goal.color,             // 使用目标自己的颜色
-                boxShadow: '0 12px 30px rgba(0,0,0,0.12)', // 投影
-                display: 'grid',
-                placeItems: 'center',
-                color: 'white',
-                fontWeight: 800,
-                fontSize: 14,
-                textAlign: 'center',
-                padding: 12
-              }}
-            >
-              {goal.name}
-            </div>
-
-            {/* 目标类型 + 重要度 Tag */}
-            <div className="chip">
-              {goal.type === 'ongoing' ? '持续型' : '项目型'} · {goal.importance}★
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* 目标编辑弹窗（创建/编辑用） */}
       <GoalEditorModal
-        open={showModal}     // 是否显示弹窗
-        goal={editingGoal}   // 当前编辑的目标（null = 新建）
+        open={showModal}
+        goal={editingGoal}
         onClose={() => {
-          setShowModal(false);   // 关闭弹窗
-          setEditingGoal(null);  // 清空正在编辑的目标
+          setShowModal(false);
+          setEditingGoal(null);
         }}
-        onSaved={() => refreshGoals()} // 保存成功后，刷新目标列表
+        onSaved={() => void refreshGoals()}
       />
 
-      {/* 目标详情弹窗（只在 detailGoal 有值时显示） */}
+      {arrangingGoal && (
+        <div className="goal-arrange-backdrop" onClick={() => setArrangingGoalId(null)}>
+          <div className="goal-arrange-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="goal-arrange-sheet__planet" style={{ '--planet-color': arrangingGoal.color } as React.CSSProperties} />
+            <div className="goal-arrange-sheet__title">{arrangingGoal.name}</div>
+            <button
+              type="button"
+              className="goal-arrange-sheet__action is-primary"
+              onClick={() => archiveGoal(arrangingGoal.id, 'planet')}
+            >
+              Make planet
+            </button>
+            <button
+              type="button"
+              className="goal-arrange-sheet__action is-secondary"
+              onClick={() => archiveGoal(arrangingGoal.id, 'pending')}
+            >
+              Pending
+            </button>
+            <button
+              type="button"
+              className="goal-arrange-sheet__close"
+              onClick={() => setArrangingGoalId(null)}
+            >
+              close
+            </button>
+          </div>
+        </div>
+      )}
+
       {detailGoal && (
-        // 背景遮罩层，点击遮罩关闭详情弹窗
         <div className="modal-backdrop" onClick={() => setDetailGoalId(null)}>
-          {/* 弹窗主体，阻止 click 冒泡到背景层 */}
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)' }}>
-            {/* 弹窗标题区域：目标名称 + 关闭按钮 */}
             <div className="section-title" style={{ marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {/* 左侧彩色小圆点（目标颜色） */}
                 <div
                   className="goal-dot"
                   style={{
                     width: 14,
                     height: 14,
                     background: detailGoal.color,
-                    // 外圈淡色阴影（goal.color 后面加 22 表示透明度）
                     boxShadow: `0 0 0 6px ${detailGoal.color}22`
                   }}
                 />
-                {/* 目标名称 + 类型 + 重要度 */}
                 <div>
                   <div style={{ fontWeight: 800 }}>{detailGoal.name}</div>
                   <div style={{ color: '#64748b', fontSize: 13 }}>
@@ -207,13 +380,11 @@ export default function GoalsPage() {
                   </div>
                 </div>
               </div>
-              {/* 右上角“关闭”按钮 */}
               <button className="btn secondary" onClick={() => setDetailGoalId(null)}>
                 关闭
               </button>
             </div>
 
-            {/* 时间信息区域：持续型显示开始时间，项目型显示起止时间 */}
             <div style={{ color: '#475569', fontSize: 14 }}>
               {detailGoal.type === 'ongoing' ? (
                 <>开始：{formatDate(detailGoal.startDate, 'YYYY/MM/DD')}</>
@@ -225,76 +396,67 @@ export default function GoalsPage() {
               )}
             </div>
 
-            {/* 类别 / 步骤 列表 */}
             <div>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>类别 / 步骤</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                {/* 遍历当前目标的所有类别 */}
-                {(categories[detailGoal.id] || []).map((c) => (
+                {(categories[detailGoal.id] || []).map((category) => (
                   <div
-                    key={c.id}
+                    key={category.id}
                     className="chip"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
-                    <span>{c.name}</span>
-                    {/* 重命名按钮（小铅笔 ✎） */}
+                    <span>{category.name}</span>
                     <button
                       style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#0ea5e9' }}
-                      onClick={() => handleRenameCategory(detailGoal.id, c.id, c.name)}
+                      onClick={() => handleRenameCategory(detailGoal.id, category.id, category.name)}
                       title="重命名"
                     >
                       ✎
                     </button>
-                    {/* 删除按钮（×） */}
                     <button
                       style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                      onClick={() => handleRemoveCategory(detailGoal.id, c.id)}
+                      onClick={() => handleRemoveCategory(detailGoal.id, category.id)}
                       title="删除"
                     >
                       ×
                     </button>
                   </div>
                 ))}
-                {/* 如果当前没有任何类别，显示引导文案 */}
                 {(categories[detailGoal.id] || []).length === 0 && (
                   <div style={{ color: '#94a3b8', fontSize: 13 }}>还没有子目标，快速添加一个</div>
                 )}
               </div>
             </div>
 
-            {/* 新增类别输入 + 按钮 */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
-                value={categoryInputs[detailGoal.id] ?? ''}  // 当前目标对应的输入值
+                value={categoryInputs[detailGoal.id] ?? ''}
                 onChange={(e) =>
                   setCategoryInputs((prev) => ({ ...prev, [detailGoal.id]: e.target.value }))
                 }
                 placeholder="新增类别 / 步骤"
               />
-              <button className="btn secondary" onClick={() => handleAddCategory(detailGoal.id)}>
+              <button className="btn secondary" onClick={() => void handleAddCategory(detailGoal.id)}>
                 添加
               </button>
             </div>
 
-            {/* 底部按钮：编辑目标 / 删除目标 */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              {/* 编辑目标：打开编辑弹窗，并把当前 detailGoal 作为编辑对象传入 */}
               <button
                 className="btn secondary"
                 onClick={() => {
-                  setEditingGoal(detailGoal); // 设置当前编辑的目标
-                  setShowModal(true);         // 打开编辑弹窗
-                  setDetailGoalId(null);      // 关闭详情弹窗（避免两个弹窗叠在一起）
+                  setEditingGoal(detailGoal);
+                  setShowModal(true);
+                  setDetailGoalId(null);
                 }}
               >
                 编辑目标
               </button>
 
-              {/* 删除目标 */}
               <button
                 className="btn"
                 style={{ background: '#ef4444' }}
-                onClick={() => handleDeleteGoal(detailGoal.id)}
+                onClick={() => void handleDeleteGoal(detailGoal.id)}
               >
                 删除
               </button>
@@ -302,6 +464,6 @@ export default function GoalsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

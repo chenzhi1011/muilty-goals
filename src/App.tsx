@@ -8,41 +8,10 @@ export default function App() {
   const [page, setPage] = useState<Page>('tasks');
 
   return (
-    <>
-      <div className="app-shell">
-        <header className="content-header">
-          {/* 品牌与标题 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, #0ea5e9, #22d3ee)',
-                display: 'grid',
-                placeItems: 'center',
-                color: 'white',
-                fontWeight: 900,
-                letterSpacing: -0.5
-              }}
-            >
-              z
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>GoalFlow</div>
-            </div>
-          </div>
-        </header>
-        {page === 'tasks' ? <TasksPage /> : <GoalsPage />}
-      </div>
-      <nav className="bottom-nav" role="navigation" aria-label="Primary">
-        <button className={page === 'tasks' ? 'active' : ''} onClick={() => setPage('tasks')}>
-          <span>Tasks</span>
-        </button>
-        <button className={page === 'goals' ? 'active' : ''} onClick={() => setPage('goals')}>
-          <span>Goals</span>
-        </button>
-      </nav>
-    </>
+    page === 'tasks' ? (
+      <TasksPage onNavigateGoals={() => setPage('goals')} />
+    ) : (
+      <GoalsPage onNavigateTasks={() => setPage('tasks')} />
+    )
   );
 }
